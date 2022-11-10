@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: "apidb"
+      POSTGRES_USER: "apiadmin"
+      POSTGRES_PASSWORD: "admin"
+      POSTGRES_HOST_AUTH_METHOD: md5
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U apiadmin -d apidb"]
+      interval: "2s"
+      timeout: "2s"
+      retries: 5
+  web:
+    build: .
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elastic:
+        condition:
+          service_healthy
+    ports:
+      - "8888:8888"
+  elastic:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.5.0
+    container_name: elastic
+    environment:
+      discovery.type: single-node
+      ELASTIC_PASSWORD: eladmin
+      ES_JAVA_OPTS: "-Xmx256m -Xms256m"
+    restart: always
+    ports:
+      - '9200:9200'
+      - '9300:9300'
+    healthcheck:
+      test: ["CMD-SHELL", "curl elastic:9200/_cat/health >/dev/null || exit 1"]
+      interval: "7s"
+      timeout: "7s"
+      retries: 7
+
